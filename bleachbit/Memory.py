@@ -23,11 +23,13 @@
 Wipe memory
 """
 
+// 클래스
 from __future__ import absolute_import, print_function
 
 from bleachbit import FileUtilities
 from bleachbit import General
 
+//import 선언
 import logging
 import os
 import re
@@ -37,9 +39,9 @@ import traceback
 
 logger = logging.getLogger(__name__)
 
-
+// 사용 중인 스왑 디바이스 수 계산함수
 def count_swap_linux():
-    """Count the number of swap devices in use"""
+    
     f = open("/proc/swaps")
     count = 0
     for line in f:
@@ -47,33 +49,27 @@ def count_swap_linux():
             count += 1
     return count
 
-
+// swapon-s 의 출력 반환
 def get_proc_swaps():
-    """Return the output of 'swapon -s'"""
-    # Usually 'swapon -s' is identical to '/proc/swaps'
-    # Here is one exception:
-    # https://bugs.launchpad.net/ubuntu/+source/bleachbit/+bug/1092792
+    
     (rc, stdout, _) = General.run_external(['swapon', '-s'])
     if 0 == rc:
         return stdout
     logger.debug('"swapoff -s" failed so falling back to /proc/swaps')
     return open("/proc/swaps").read()
 
-
+// 스왑오프 출력을 구문 분석하고 디바이스 이름을 반환
 def parse_swapoff(swapoff):
-    """Parse the output of swapoff and return the device name"""
-    # English is 'swapoff on /dev/sda5' but German is 'swapoff für ...'
-    # Example output in English with LVM and hyphen: 'swapoff on /dev/mapper/lubuntu-swap_1'
-    # This matches swap devices and swap files
+    
     ret = re.search('^swapoff (\w* )?(/[\w/.-]+)$', swapoff)
     if not ret:
         # no matches
         return None
     return ret.group(2)
 
-
+// 디바이스의 Linux 스왑 및 목록 사용 안 함
 def disable_swap_linux():
-    """Disable Linux swap and return list of devices"""
+   
     if 0 == count_swap_linux():
         return
     logger.debug('disabling swap"')
@@ -93,9 +89,9 @@ def disable_swap_linux():
         devices.append(ret)
     return devices
 
-
+// 리눅스 스왑 
 def enable_swap_linux():
-    """Enable Linux swap"""
+    
     logger.debug('re-enabling swap"')
     args = ["swapon", "-a"]
     p = subprocess.Popen(args, stderr=subprocess.PIPE)
@@ -104,10 +100,9 @@ def enable_swap_linux():
     if 0 != p.returncode:
         raise RuntimeError(outputs[1].replace("\n", ""))
 
-
+// 현재 프로세스를 Linux Out-of-memory의 주요 대상으로 설정 함수
 def make_self_oom_target_linux():
-    """Make the current process the primary target for Linux out-of-memory killer"""
-    # In Linux 2.6.36 the system changed from oom_adj to oom_score_adj
+    
     path = '/proc/%d/oom_score_adj' % os.getpid()
     if os.path.exists(path):
         open(path, 'w').write('1000')
@@ -126,9 +121,9 @@ def make_self_oom_target_linux():
     except:
         traceback.print_exc()
 
-
+// 할당되지 않은 메모리 채우는 함수
 def fill_memory_linux():
-    """Fill unallocated memory"""
+   
     report_free()
     allocbytes = int(physical_free() * 0.4)
     if allocbytes < 1024:
@@ -145,9 +140,9 @@ def fill_memory_linux():
         del buf
     report_free()
 
-
+// 할당되지 않은 메모리 채우는 함수
 def get_swap_size_linux(device, proc_swaps=None):
-    """Return the size of the partition in bytes"""
+    
     if proc_swaps is None:
         proc_swaps = get_proc_swaps()
     line = proc_swaps.split('\n')[0]
@@ -160,9 +155,9 @@ def get_swap_size_linux(device, proc_swaps=None):
     raise RuntimeError("error: cannot find size of swap device '%s'\n%s" %
                        (device, proc_swaps))
 
-
+// 스왑 디바이스의 uuid 찾는 함수
 def get_swap_uuid(device):
-    """Find the UUID for the swap device"""
+    
     uuid = None
     args = ['blkid', device, '-s', 'UUID']
     (_, stdout, _) = General.run_external(args)
@@ -179,6 +174,7 @@ def physical_free_darwin(run_vmstat=None):
     def parse_line(k, v):
         return k, int(v.strip(" ."))
 
+    // 가상 메모리 통계 함수
     def get_page_size(line):
         m = re.match(
             r"Mach Virtual Memory Statistics: \(page size of (\d+) bytes\)",
@@ -194,9 +190,9 @@ def physical_free_darwin(run_vmstat=None):
     vm_stat = dict(parse_line(*l.split(":")) for l in output if l != "")
     return vm_stat["Pages free"] * page_size
 
-
+// 리눅스에서 실제 사용 가능한 메모리 반환
 def physical_free_linux():
-    """Return the physical free memory on Linux"""
+    
     f = open("/proc/meminfo")
     free_bytes = 0
     for line in f:
@@ -210,9 +206,9 @@ def physical_free_linux():
     else:
         raise Exception("unknown")
 
-
+// Windows애서 실제 사용 가능한 메모리 반환하는 함수
 def physical_free_windows():
-    """Return physical free memory on Windows"""
+   
 
     from ctypes import c_long, c_ulonglong
     from ctypes.wintypes import Structure, sizeof, windll, byref
@@ -240,7 +236,7 @@ def physical_free_windows():
     print(z)
     return z.ullAvailPhys
 
-
+// 메모리 반환 함수
 def physical_free():
     if sys.platform.startswith('linux'):
         return physical_free_linux()
@@ -251,9 +247,9 @@ def physical_free():
     else:
         raise RuntimeError('unsupported platform for physical_free()')
 
-
+// 리눅스 스왑 파일을 복사한 다음 다시 초기화 하는 함수
 def report_free():
-    """Report free memory"""
+   
     bytes_free = physical_free()
     bytes_str = FileUtilities.bytes_to_human(bytes_free)
     logger.debug('physical free: %s (%d B)', bytes_str, bytes_free)
@@ -274,9 +270,9 @@ def wipe_swap_linux(devices, proc_swaps):
                 'swap device %s is larger (%d) than expected (%d)' %
                 (device, actual_size_bytes, safety_limit_bytes))
         uuid = get_swap_uuid(device)
-        # wipe
+        // wipe 실행
         FileUtilities.wipe_contents(device, truncate=False)
-        # reinitialize
+        // 초기화
         logger.debug('reinitializing swap device %s', device)
         args = ['mkswap', device]
         if uuid:
@@ -286,13 +282,13 @@ def wipe_swap_linux(devices, proc_swaps):
         if 0 != rc:
             raise RuntimeError(stderr.replace("\n", ""))
 
-
+// 할당되지 않은 메모리 지우는 함수
 def wipe_memory():
-    """Wipe unallocated memory"""
-    # cache the file because 'swapoff' changes it
+    
+    // 파일 캐시
     proc_swaps = get_proc_swaps()
     devices = disable_swap_linux()
-    yield True  # process GTK+ idle loop
+    yield True  
     logger.debug('detected swap devices: ' + str(devices))
     wipe_swap_linux(devices, proc_swaps)
     yield True
@@ -307,4 +303,4 @@ def wipe_memory():
         if 0 != rc:
             logger.warning('child process returned code %d', rc)
     enable_swap_linux()
-    yield 0  # how much disk space was recovered
+    yield 0 
