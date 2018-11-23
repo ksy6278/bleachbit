@@ -24,12 +24,15 @@
 Preferences dialog
 """
 
+//클래스
 from __future__ import absolute_import, print_function
 
 from bleachbit import _, _p, online_update_notification_enabled
 from bleachbit.Options import options
 from bleachbit import GuiBasic
 
+
+//import 선언
 import gtk
 import logging
 import os
@@ -46,11 +49,12 @@ logger = logging.getLogger(__name__)
 LOCATIONS_WHITELIST = 1
 LOCATIONS_CUSTOM = 2
 
-
+// 기본 설정 대화 상자 표시 및 변경 사항 저장하는 클래스
 class PreferencesDialog:
 
-    """Present the preferences dialog and save changes"""
-
+    
+    // 초기화 함수
+    // dialog창을 띄우기 위해 초기화함. self, parent, cb_refresh_operations를 매개변수로 사용
     def __init__(self, parent, cb_refresh_operations):
         self.cb_refresh_operations = cb_refresh_operations
 
@@ -60,33 +64,45 @@ class PreferencesDialog:
                                  flags=gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT)
         self.dialog.set_default_size(300, 200)
 
+        //notebook 변수 선언
         notebook = gtk.Notebook()
         notebook.append_page(self.__general_page(), gtk.Label(_("General")))
         notebook.append_page(self.__locations_page(
             LOCATIONS_CUSTOM), gtk.Label(_("Custom")))
         notebook.append_page(self.__drives_page(), gtk.Label(_("Drives")))
+        
+        // 만약 'posix'가 os.name 이면 Unix 파일 import하여 notebook에 append_page실행
         if 'posix' == os.name:
             notebook.append_page(
                 self.__languages_page(), gtk.Label(_("Languages")))
         notebook.append_page(self.__locations_page(
             LOCATIONS_WHITELIST), gtk.Label(_("Whitelist")))
 
+        //self.diaglof 실행
         self.dialog.vbox.pack_start(notebook, True)
+        //self.dialog에 버튼 더함
         self.dialog.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
 
+    // 콜백 함수를 사용하여 옵션 전환     
     def __toggle_callback(self, cell, path):
-        """Callback function to toggle option"""
+        
         options.toggle(path)
+        // online_update_notification_enabled 이면 
         if online_update_notification_enabled:
             self.cb_beta.set_sensitive(options.get('check_online_updates'))
+            // 'nt' == os.name이면 Windows파일 import하여 self.cb_winapp2.set_sensitive 실행
             if 'nt' == os.name:
                 self.cb_winapp2.set_sensitive(
                     options.get('check_online_updates'))
+        // 만약 'auto_hide' == path이면 self.cb_refresh_operations() 수행         
         if 'auto_hide' == path:
             self.cb_refresh_operations()
+        // 만약  'auto_start' == path이고   
         if 'auto_start' == path:
+            // 'nt' == os.name이면 Windows파일 import하여  swc = Windows.start_with_computer 선언
             if 'nt' == os.name:
                 swc = Windows.start_with_computer
+            // 'posix' == os.name이면 Unix파일 import하여 swc = Unix.start_with_computer선언
             if 'posix' == os.name:
                 swc = Unix.start_with_computer
             try:
@@ -100,18 +116,21 @@ class PreferencesDialog:
                 dlg.run()
                 dlg.destroy()
 
+    // 일반 페이지가 포함된 위젯 반환
     def __general_page(self):
-        """Return a widget containing the general page"""
-
+      
+        //'nt' == os.name이면 Windows파일 import하여  swc = Windows.start_with_computer_check 선언
         if 'nt' == os.name:
             swcc = Windows.start_with_computer_check
+        // 'posix' == os.name이면 Unix파일 import하여 swc = Unix.start_with_computer_check 선언
         if 'posix' == os.name:
             swcc = Unix.start_with_computer_check
 
         options.set('auto_start', swcc())
 
         vbox = gtk.VBox()
-
+        
+        // online_update_notification_enabled 이면
         if online_update_notification_enabled:
             cb_updates = gtk.CheckButton(
                 _("Check periodically for software updates via the Internet"))
@@ -144,18 +163,13 @@ class PreferencesDialog:
 
             vbox.pack_start(updates_box, False)
 
-        # TRANSLATORS: This means to hide cleaners which would do
-        # nothing.  For example, if Firefox were never used on
-        # this system, this option would hide Firefox to simplify
-        # the list of cleaners.
+        // '무관한 클리너 숨김' 버튼 생성 및 연결
         cb_auto_hide = gtk.CheckButton(_("Hide irrelevant cleaners"))
         cb_auto_hide.set_active(options.get('auto_hide'))
         cb_auto_hide.connect('toggled', self.__toggle_callback, 'auto_hide')
         vbox.pack_start(cb_auto_hide, False)
 
-        # TRANSLATORS: Overwriting is the same as shredding.  It is a way
-        # to prevent recovery of the data. You could also translate
-        # 'Shred files to prevent recovery.'
+        // '파일 삭제 기능' 버튼 생성 및 연결
         cb_shred = gtk.CheckButton(_("Overwrite contents of files to prevent recovery"))
         cb_shred.set_active(options.get('shred'))
         cb_shred.connect('toggled', self.__toggle_callback, 'shred')
@@ -163,37 +177,40 @@ class PreferencesDialog:
             _("Overwriting is ineffective on some file systems and with certain BleachBit operations.  Overwriting is significantly slower."))
         vbox.pack_start(cb_shred, False)
 
+        // '블리치비트 시작' 버튼 생성 및 연결
         cb_start = gtk.CheckButton(_("Start BleachBit with computer"))
         cb_start.set_active(options.get('auto_start'))
         cb_start.connect('toggled', self.__toggle_callback, 'auto_start')
         vbox.pack_start(cb_start, False)
 
-        # Close the application after cleaning is complete.
+       
+        // 클리너 완료 후 프로그램 종료 버튼 생성 및 연결
         cb_exit = gtk.CheckButton(_("Exit after cleaning"))
         cb_exit.set_active(options.get('exit_done'))
         cb_exit.connect('toggled', self.__toggle_callback, 'exit_done')
         vbox.pack_start(cb_exit, False)
 
-        # Disable delete confirmation message.
+        // 삭제 전 확인 버튼 생성 및 연결
         cb_popup = gtk.CheckButton(_("Confirm before delete"))
         cb_popup.set_active(options.get('delete_confirmation'))
         cb_popup.connect(
             'toggled', self.__toggle_callback, 'delete_confirmation')
         vbox.pack_start(cb_popup, False)
 
-        # Use base 1000 over 1024?
+        
         cb_units_iec = gtk.CheckButton(
             _("Use IEC sizes (1 KiB = 1024 bytes) instead of SI (1 kB = 1000 bytes)"))
         cb_units_iec.set_active(options.get("units_iec"))
         cb_units_iec.connect('toggled', self.__toggle_callback, 'units_iec')
         vbox.pack_start(cb_units_iec, False)
         return vbox
-
+    
+    // 드라이브 페이지가 포함된 위젯 반환 함수
     def __drives_page(self):
-        """Return widget containing the drives page"""
-
+        
+        // 드라이브 추가를 위한 콜백함수
         def add_drive_cb(button):
-            """Callback for adding a drive"""
+            // title과 pathname 선언
             title = _("Choose a folder")
             pathname = GuiBasic.browse_folder(self.parent, title,
                                               multiple=False, stock_button=gtk.STOCK_ADD)
@@ -201,13 +218,14 @@ class PreferencesDialog:
                 liststore.append([pathname])
                 pathnames.append(pathname)
                 options.set_list('shred_drives', pathnames)
-
+        
+        // 드라이버 제거를 위한 콜백 함수
         def remove_drive_cb(button):
-            """Callback for removing a drive"""
+           
             treeselection = treeview.get_selection()
             (model, _iter) = treeselection.get_selected()
             if None == _iter:
-                # nothing selected
+                // 아무것도 선택되지 않으면
                 return
             pathname = model[_iter][0]
             liststore.remove(_iter)
@@ -216,7 +234,7 @@ class PreferencesDialog:
 
         vbox = gtk.VBox()
 
-        # TRANSLATORS: 'free' means 'unallocated'
+       
         notice = gtk.Label(
             _("Choose a writable folder for each drive for which to overwrite free space."))
         notice.set_line_wrap(True)
@@ -238,12 +256,12 @@ class PreferencesDialog:
 
         vbox.pack_start(treeview)
 
-        # TRANSLATORS: In the preferences dialog, this button adds a path to
-        # the list of paths
+       
+        // 추가버튼 추가
         button_add = gtk.Button(_p('button', 'Add'))
         button_add.connect("clicked", add_drive_cb)
-        # TRANSLATORS: In the preferences dialog, this button removes a path
-        # from the list of paths
+       
+        //제거버튼 추가
         button_remove = gtk.Button(_p('button', 'Remove'))
         button_remove.connect("clicked", remove_drive_cb)
 
@@ -255,11 +273,11 @@ class PreferencesDialog:
 
         return vbox
 
+    // 언어 페이지가 포함된 위젯 반환 함수
     def __languages_page(self):
-        """Return widget containing the languages page"""
-
+        
+        // 보존 row를 전환하기 위한 콜백 함수
         def preserve_toggled_cb(cell, path, liststore):
-            """Callback for toggling the 'preserve' column"""
             __iter = liststore.get_iter_from_string(path)
             value = not liststore.get_value(__iter, 0)
             liststore.set(__iter, 0, value)
@@ -272,15 +290,15 @@ class PreferencesDialog:
             _("All languages will be deleted except those checked."))
         vbox.pack_start(notice, False)
 
-        # populate data
+        // 데이터 채움
         liststore = gtk.ListStore('gboolean', str, str)
         for lang, native in sorted(Unix.Locales.native_locale_names.items()):
             liststore.append([(options.get_language(lang)), lang, native])
 
-        # create treeview
+       // 트리뷰 생성
         treeview = gtk.TreeView(liststore)
 
-        # create column views
+        //컬럼뷰 생성
         self.renderer0 = gtk.CellRendererToggle()
         self.renderer0.set_property('activatable', True)
         self.renderer0.connect('toggled', preserve_toggled_cb, liststore)
@@ -297,7 +315,7 @@ class PreferencesDialog:
         treeview.append_column(self.column2)
         treeview.set_search_column(2)
 
-        # finish
+        // 종료
         swindow = gtk.ScrolledWindow()
         swindow.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         swindow.set_size_request(300, 200)
@@ -305,11 +323,12 @@ class PreferencesDialog:
         vbox.pack_start(swindow)
         return vbox
 
+    // 파일 및 폴더 목록이 포함된 위젯 되돌리기 함수
     def __locations_page(self, page_type):
-        """Return a widget containing a list of files and folders"""
-
+       
+        // 파일 추가를 위한 콜백 함수
         def add_whitelist_file_cb(button):
-            """Callback for adding a file"""
+            
             title = _("Choose a file")
             pathname = GuiBasic.browse_file(self.parent, title)
             if pathname:
@@ -321,8 +340,9 @@ class PreferencesDialog:
                 pathnames.append(['file', pathname])
                 options.set_whitelist_paths(pathnames)
 
+        // 파일 추가를 위한 콜백 함수        
         def add_whitelist_folder_cb(button):
-            """Callback for adding a folder"""
+            
             title = _("Choose a folder")
             pathname = GuiBasic.browse_folder(self.parent, title,
                                               multiple=False, stock_button=gtk.STOCK_ADD)
@@ -335,12 +355,13 @@ class PreferencesDialog:
                 pathnames.append(['folder', pathname])
                 options.set_whitelist_paths(pathnames)
 
+        // 경로를 삭제하기 위한 콜백 함수        
         def remove_whitelist_path_cb(button):
             """Callback for removing a path"""
             treeselection = treeview.get_selection()
             (model, _iter) = treeselection.get_selected()
             if None == _iter:
-                # nothing selected
+                // 아무것도 선택되지 않았다면
                 return
             pathname = model[_iter][1]
             liststore.remove(_iter)
@@ -349,8 +370,9 @@ class PreferencesDialog:
                     pathnames.remove(this_pathname)
                     options.set_whitelist_paths(pathnames)
 
+        // 파일 추가를 위한 콜백 함수            
         def add_custom_file_cb(button):
-            """Callback for adding a file"""
+            
             title = _("Choose a file")
             pathname = GuiBasic.browse_file(self.parent, title)
             if pathname:
@@ -362,8 +384,9 @@ class PreferencesDialog:
                 pathnames.append(['file', pathname])
                 options.set_custom_paths(pathnames)
 
+        // 폴더 추가를 위한 콜백 함수         
         def add_custom_folder_cb(button):
-            """Callback for adding a folder"""
+            
             title = _("Choose a folder")
             pathname = GuiBasic.browse_folder(self.parent, title,
                                               multiple=False, stock_button=gtk.STOCK_ADD)
@@ -376,12 +399,13 @@ class PreferencesDialog:
                 pathnames.append(['folder', pathname])
                 options.set_custom_paths(pathnames)
 
+         // 경로 삭제를 위한 콜백 함수       
         def remove_custom_path_cb(button):
             """Callback for removing a path"""
             treeselection = treeview.get_selection()
             (model, _iter) = treeselection.get_selected()
             if None == _iter:
-                # nothing selected
+                // 아무것도 선택되지 
                 return
             pathname = model[_iter][1]
             liststore.remove(_iter)
@@ -392,7 +416,7 @@ class PreferencesDialog:
 
         vbox = gtk.VBox()
 
-        # load data
+        // 데이터 가져옴
         if LOCATIONS_WHITELIST == page_type:
             pathnames = options.get_whitelist_paths()
         elif LOCATIONS_CUSTOM == page_type:
@@ -411,8 +435,7 @@ class PreferencesDialog:
             liststore.append([type_str, path])
 
         if LOCATIONS_WHITELIST == page_type:
-            # TRANSLATORS: "Paths" is used generically to refer to both files
-            # and folders
+           
             notice = gtk.Label(
                 _("Theses paths will not be deleted or modified."))
         elif LOCATIONS_CUSTOM == page_type:
@@ -420,29 +443,28 @@ class PreferencesDialog:
                 _("These locations can be selected for deletion."))
         vbox.pack_start(notice, False)
 
-        # create treeview
+        // 트리 뷰 생성
         treeview = gtk.TreeView(liststore)
 
-        # create column views
+        // 칼럼 뷰 생성
         self.renderer0 = gtk.CellRendererText()
         self.column0 = gtk.TreeViewColumn(_("Type"), self.renderer0, text=0)
         treeview.append_column(self.column0)
 
         self.renderer1 = gtk.CellRendererText()
-        # TRANSLATORS: In the tree view "Path" is used generically to refer to a
-        # file, a folder, or a pattern describing either
+       
         self.column1 = gtk.TreeViewColumn(_("Path"), self.renderer1, text=1)
         treeview.append_column(self.column1)
         treeview.set_search_column(1)
 
-        # finish tree view
+        // 트리 뷰 끝냄
         swindow = gtk.ScrolledWindow()
         swindow.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         swindow.set_size_request(300, 200)
         swindow.add(treeview)
         vbox.pack_start(swindow)
 
-        # buttons that modify the list
+       // 리스트 수정 버튼 생성 
         button_add_file = gtk.Button(_p('button', 'Add file'))
         if LOCATIONS_WHITELIST == page_type:
             button_add_file.connect("clicked", add_whitelist_file_cb)
@@ -468,9 +490,10 @@ class PreferencesDialog:
         button_box.pack_start(button_remove)
         vbox.pack_start(button_box, False)
 
-        # return page
+        // 페이지 반환
         return vbox
 
+    // dialog 
     def run(self):
         """Run the dialog"""
         self.dialog.show_all()
