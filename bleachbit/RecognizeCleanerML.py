@@ -21,14 +21,14 @@
 """
 Check local CleanerML files as a security measure
 """
-
+// 클래스 선언
 from __future__ import absolute_import, print_function
-
 from bleachbit import _, _p
-import bleachbit
 from bleachbit.CleanerML import list_cleanerml_files
 from bleachbit.Options import options
 
+// import문 
+import bleachbit
 import hashlib
 import logging
 import os
@@ -41,12 +41,12 @@ KNOWN = 1
 CHANGED = 2
 NEW = 3
 
-
+// 클리너 정의 변경에 대한 dialog 보여주는 함수
 def cleaner_change_dialog(changes, parent):
-    """Present a dialog regarding the change of cleaner definitions"""
 
+    // 체크 박스 클릭에 대한 콜백 함수
     def toggled(cell, path, model):
-        """Callback for clicking the checkbox"""
+       
         __iter = model.get_iter_from_string(path)
         value = not model.get_value(__iter, 0)
         model.set(__iter, 0, value)
@@ -60,20 +60,19 @@ def cleaner_change_dialog(changes, parent):
                         flags=gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT)
     dialog.set_default_size(600, 500)
 
-    # create warning
+    // 경고 생성
     warnbox = gtk.HBox()
     image = gtk.Image()
     image.set_from_stock(gtk.STOCK_DIALOG_WARNING, gtk.ICON_SIZE_DIALOG)
     warnbox.pack_start(image, False)
-    # TRANSLATORS: Cleaner definitions are XML data files that define
-    # which files will be cleaned.
+   
     label = gtk.Label(
         _("These cleaner definitions are new or have changed. Malicious definitions can damage your system. If you do not trust these changes, delete the files or quit."))
     label.set_line_wrap(True)
     warnbox.pack_start(label, True)
     dialog.vbox.pack_start(warnbox, False)
 
-    # create tree view
+   // 트리뷰 생성
     import gobject
     liststore = gtk.ListStore(gobject.TYPE_BOOLEAN, gobject.TYPE_STRING)
     treeview = gtk.TreeView(model=liststore)
@@ -81,21 +80,19 @@ def cleaner_change_dialog(changes, parent):
     renderer0 = gtk.CellRendererToggle()
     renderer0.set_property('activatable', True)
     renderer0.connect('toggled', toggled, liststore)
-    # TRANSLATORS: This is the column label (header) in the tree view for the
-    # security dialog
+    
     treeview.append_column(
         gtk.TreeViewColumn(_p('column_label', 'Delete'), renderer0, active=0))
     renderer1 = gtk.CellRendererText()
-    # TRANSLATORS: This is the column label (header) in the tree view for the
-    # security dialog
+    
     treeview.append_column(
         gtk.TreeViewColumn(_p('column_label', 'Filename'), renderer1, text=1))
 
-    # populate tree view
+    // 트리 뷰 채우기
     for change in changes:
         liststore.append([False, change[0]])
 
-    # populate dialog with widgets
+    // dialog 채우기
     scrolled_window = gtk.ScrolledWindow()
     scrolled_window.add_with_viewport(treeview)
     dialog.vbox.pack_start(scrolled_window)
@@ -103,7 +100,7 @@ def cleaner_change_dialog(changes, parent):
     dialog.add_button(gtk.STOCK_OK, gtk.RESPONSE_ACCEPT)
     dialog.add_button(gtk.STOCK_QUIT, gtk.RESPONSE_CLOSE)
 
-    # run dialog
+    // dialog 실행
     dialog.show_all()
     while True:
         if gtk.RESPONSE_ACCEPT != dialog.run():
@@ -119,7 +116,7 @@ def cleaner_change_dialog(changes, parent):
             break
         import GuiBasic
         if not GuiBasic.delete_confirmation_dialog(parent, mention_preview=False):
-            # confirmation not accepted, so do not delete files
+            
             continue
         for path in delete:
             logger.info("deleting unrecognized CleanerML '%s'", path)
@@ -127,18 +124,17 @@ def cleaner_change_dialog(changes, parent):
         break
     dialog.destroy()
 
-
+// 문자열에 대한 해시의 16진수 digest 반환
 def hashdigest(string):
-    """Return hex digest of hash for a string"""
+   
 
-    # hashlib requires Python 2.5
+    
     return hashlib.sha512(string).hexdigest()
 
-
+// 보안적 조치로 local CleanerML 파일 체크하는 클래스
 class RecognizeCleanerML:
 
-    """Check local CleanerML files as a security measure"""
-
+    // 초기화 함수
     def __init__(self, parent_window=None):
         self.parent_window = parent_window
         try:
@@ -148,8 +144,8 @@ class RecognizeCleanerML:
             options.set('hashsalt', self.salt)
         self.__scan()
 
+     // 경로이름 인식 함수   
     def __recognized(self, pathname):
-        """Is pathname recognized?"""
         with open(pathname) as f:
             body = f.read()
         new_hash = hashdigest(self.salt + body)
@@ -161,8 +157,8 @@ class RecognizeCleanerML:
             return KNOWN, new_hash
         return CHANGED, new_hash
 
+    // 파일 찾는 
     def __scan(self):
-        """Look for files and act accordingly"""
         changes = []
         for pathname in sorted(list_cleanerml_files(local_only=True)):
             pathname = os.path.abspath(pathname)
