@@ -22,11 +22,12 @@
 Store and retrieve user preferences
 """
 
+//클래스 선언
 from __future__ import absolute_import, print_function
-
-import bleachbit
 from bleachbit import General
 
+// import문 선언
+import bleachbit
 import logging
 import os
 import re
@@ -43,23 +44,22 @@ boolean_keys = ['auto_hide', 'auto_start', 'check_beta',
 if 'nt' == os.name:
     boolean_keys.append('update_winapp2')
 
-
+// 경로 이름을 .ini 옵션 이름으로 변경 함수
 def path_to_option(pathname):
-    """Change a pathname to a .ini option name (a key)"""
-    # On Windows change to lowercase and use backwards slashes.
+   
     pathname = os.path.normcase(pathname)
-    # On Windows expand DOS-8.3-style pathnames.
+    
     if 'nt' == os.name and os.path.exists(pathname):
         pathname = GetLongPathName(pathname)
     if ':' == pathname[1]:
-        # ConfigParser treats colons in a special way
+       
         pathname = pathname[0] + pathname[2:]
     return pathname
 
+// 사용자 기본 설정 저장 및 검색 클래스
 class Options:
 
-    """Store and retrieve user preferences"""
-
+    // 초기화 함수
     def __init__(self):
         self.purged = False
         self.config = bleachbit.RawConfigParser()
@@ -68,8 +68,9 @@ class Options:
         self.config._boolean_states['f'] = False
         self.restore()
 
+     // 디스크에 정보 쓰는 함수
     def __flush(self):
-        """Write information to disk"""
+       
         if not self.purged:
             self.__purge()
         if not os.path.exists(bleachbit.options_dir):
@@ -88,8 +89,9 @@ class Options:
         if mkfile and General.sudo_mode():
             General.chownself(bleachbit.options_file)
 
+    // 사용되지 않는 데이터 지우는 함수        
     def __purge(self):
-        """Clear out obsolete data"""
+        
         self.purged = True
         if not self.config.has_section('hashpath'):
             return
@@ -110,14 +112,15 @@ class Options:
             if not exists:
                 # the file does not on exist, so forget it
                 self.config.remove_option('hashpath', option)
-
+    // 기본 값 설정 함수
     def __set_default(self, key, value):
-        """Set the default value"""
+       
         if not self.config.has_option('bleachbit', key):
             self.set(key, value)
 
+    // 일반 옵션 검색 함수
     def get(self, option, section='bleachbit'):
-        """Retrieve a general option"""
+        
         if not 'nt' == os.name and 'update_winapp2' == option:
             return False
         if section == 'hashpath' and option[1] == ':':
@@ -126,24 +129,27 @@ class Options:
             return self.config.getboolean(section, option)
         return self.config.get(section, option.encode('utf-8'))
 
+    // 파일의 해시 호출 함수
     def get_hashpath(self, pathname):
-        """Recall the hash for a file"""
         return self.get(path_to_option(pathname), 'hashpath')
 
+    // 언어 보존 여부에 대한 값 검색 함수
     def get_language(self, langid):
-        """Retrieve value for whether to preserve the language"""
+       
         if not self.config.has_option('preserve_languages', langid):
             return False
         return self.config.getboolean('preserve_languages', langid)
 
+    // 선택한 모든 언어 목록 반환 함수
     def get_languages(self):
-        """Return a list of all selected languages"""
+      
         if not self.config.has_section('preserve_languages'):
             return None
         return self.config.options('preserve_languages')
 
+    // 목록 데이터 type 옵션 반환 함수
     def get_list(self, option):
-        """Return an option which is a list data type"""
+        
         section = "list/%s" % option
         if not self.config.has_section(section):
             return None
@@ -152,8 +158,9 @@ class Options:
             values.append(self.config.get(section, option))
         return values
 
+    // get_whitelist_paths 와 get_custom_path 추상화
     def get_paths(self, section):
-        """Abstracts get_whitelist_paths and get_custom_paths"""
+        
         if not self.config.has_section(section):
             return []
         myoptions = []
@@ -169,16 +176,16 @@ class Options:
             values.append((p_type, p_path))
         return values
 
+    // whitelist 경로 반환 함수
     def get_whitelist_paths(self):
-        """Return the whitelist of paths"""
-        return self.get_paths("whitelist/paths")
+         return self.get_paths("whitelist/paths")
 
+     // 사용자 지정 경로 반환 함수
     def get_custom_paths(self):
-        """Return list of custom paths"""
-        return self.get_paths("custom/paths")
+         return self.get_paths("custom/paths")
 
+    // 트리 보기에 대한 옵션 검색 함수
     def get_tree(self, parent, child):
-        """Retrieve an option for the tree view.  The child may be None."""
         option = parent
         if child is not None:
             option += "." + child
@@ -187,12 +194,11 @@ class Options:
         try:
             return self.config.getboolean('tree', option)
         except:
-            # in case of corrupt configuration (Launchpad #799130)
             traceback.print_exc()
             return False
 
+    // Disk에 저장된 옵션 복원 함수    
     def restore(self):
-        """Restore saved options from disk"""
         try:
             self.config.read(bleachbit.options_file)
         except:
@@ -209,7 +215,7 @@ class Options:
                 traceback.print_exc()
                 logger.error('error setting default shred drives')
 
-        # set defaults
+        // defaluts 선언
         self.__set_default("auto_hide", True)
         self.__set_default("auto_start", False)
         self.__set_default("check_beta", False)
@@ -231,26 +237,26 @@ class Options:
                 logger.info("automatically preserving language '%s'", lang)
                 self.set_language(_lang, True)
 
-        # BleachBit upgrade or first start ever
+        // 블리치비트 업그레이드 또는 처음 시작
         if not self.config.has_option('bleachbit', 'version') or \
                 self.get('version') != bleachbit.APP_VERSION:
             self.set('first_start', True)
 
-        # set version
         self.set("version", bleachbit.APP_VERSION)
 
+     // 일반 옵션 설정 함수   
     def set(self, key, value, section='bleachbit', commit=True):
         """Set a general option"""
         self.config.set(section, key.encode('utf-8'), str(value))
         if commit:
             self.__flush()
-
+    
+    // 경로의 해시 기억 함수
     def set_hashpath(self, pathname, hashvalue):
-        """Remember the hash of a path"""
         self.set(path_to_option(pathname), hashvalue, 'hashpath')
 
+    // 목록 데이터 타입 값 설정 함수
     def set_list(self, key, values):
-        """Set a value which is a list data type"""
         section = "list/%s" % key
         if self.config.has_section(section):
             self.config.remove_section(section)
@@ -261,8 +267,8 @@ class Options:
             counter += 1
         self.__flush()
 
+   // whitelist 저장 함수
     def set_whitelist_paths(self, values):
-        """Save the whitelist"""
         section = "whitelist/paths"
         if self.config.has_section(section):
             self.config.remove_section(section)
@@ -274,8 +280,8 @@ class Options:
             counter += 1
         self.__flush()
 
+     // 사용자 지정 목록 저장 함수
     def set_custom_paths(self, values):
-        """Save the customlist"""
         section = "custom/paths"
         if self.config.has_section(section):
             self.config.remove_section(section)
@@ -287,8 +293,8 @@ class Options:
             counter += 1
         self.__flush()
 
+    // local값 설정(저장 여부) 함수    
     def set_language(self, langid, value):
-        """Set the value for a locale (whether to preserve it)"""
         if not self.config.has_section('preserve_languages'):
             self.config.add_section('preserve_languages')
         if self.config.has_option('preserve_languages', langid) and not value:
@@ -297,6 +303,7 @@ class Options:
             self.config.set('preserve_languages', langid, str(value))
         self.__flush()
 
+     // 트리 보기에 대한 옵션 설정 함수   
     def set_tree(self, parent, child, value):
         """Set an option for the tree view.  The child may be None."""
         if not self.config.has_section("tree"):
